@@ -33,9 +33,9 @@ Execute run workers every hour.
 
     0 * * * * cd /path/to/mt; perl ./tools/run-workers
 
-### Example - Executing from Cron
+### Example - Run in daemon mode
 
-Run in daemon mode.
+Run workers in daemon mode.
 
     cd /path/to/mt
     perl ./tools/run-workers --daemon
