@@ -1,10 +1,13 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 package MT::Tool::RunWorkers;
 
 # Original: Movable Type run-periodic-tasks
 
 use strict;
-use lib  qw( extlib lib );
+use warnings;
+use File::Spec;
+use FindBin;
+use lib map File::Spec->catdir($FindBin::Bin, File::Spec->updir, $_), qw/lib extlib/;
 use base qw( MT::Tool );
 
 sub usage {}
@@ -24,6 +27,7 @@ my $verbose   = 0;
 my $scoreboard;
 my $randomize_jobs = 0;
 my $trace_objects  = 0;
+my $job;
 require Getopt::Long;
 Getopt::Long::GetOptions(
     'daemon'       => \$daemonize,
@@ -33,6 +37,7 @@ Getopt::Long::GetOptions(
     'randomly'     => \$randomize_jobs,
     'verbose'      => \$verbose,
     'leak'         => \$trace_objects,
+    'job=s'        => \$job,
 );
 
 sub main {
@@ -53,23 +58,27 @@ sub main {
     $cfg{ scoreboard } = $scoreboard;
     $cfg{ prioritize } = 1;
     $cfg{ randomize }  = $randomize_jobs;
+    if ( $job ) {
+        my @jobs = split( /,/, $job );
+        $cfg{ workers }= [ @jobs ];
+    }
     require MT::Bootstrap;
     require MT;
     my $mt = MT->new() or die MT->errstr;
     if ( defined( MT->config( 'RPTProcessCap' ) ) && $proc_process_table ) {
         my $t = new Proc::ProcessTable;
-        my $rpt_count;
+        my $rpt_count = 0;
         foreach my $p ( @{ $t->table } ) {
             my $cmd = $p->cmndline;
-            if ( ( $cmd =~ /^perl/ && $cmd =~ /run-workers/ ) || 
-                 ( $cmd =~ /^perl/ && $cmd =~ /run-tasks/ ) ||
-                 ( $cmd =~ /^perl/ && $cmd =~ /run-periodic-tasks/ ) ) {
-                $rpt_count += 1;
+            if ( $cmd =~ /[\\\/^]perl\s/ && $cmd =~ /run\-workers/ ) {
+                if ( $cmd !~ /^sh\s/ ) {
+                    $rpt_count += 1;
+                }
             }
         }
         if ( $rpt_count > MT->config( 'RPTProcessCap' ) ) {
             $rpt_count = $rpt_count - 1;
-            die "$rpt_count processes already running; cancelling rebuild_queue launch\n";
+            die "$rpt_count processes already running; cancelling run-workers launch\n";
         }
     }
     if ( MT->config( 'RPTFreeMemoryLimit' ) ) {
@@ -91,7 +100,6 @@ sub main {
     $mt->{ template_dir }         = 'cms';
     $mt->{ user_class }           = 'MT::Author';
     $mt->{ plugin_template_path } = 'tmpl';
-    $mt->run_callbacks( 'init_app', $mt );
     my $client = eval {
         require MT::TheSchwartz;
         my $schwartz = MT::TheSchwartz->new( %cfg );
@@ -110,5 +118,3 @@ sub main {
 }
 
 __PACKAGE__->main() unless caller;
-
-1;
