@@ -70,7 +70,7 @@ sub main {
         my $rpt_count = 0;
         foreach my $p ( @{ $t->table } ) {
             my $cmd = $p->cmndline;
-            if ( $cmd =~ /[\\\/^]perl\s/ && $cmd =~ /run\-workers/ ) {
+            if ( $cmd =~ /perl/ && $cmd =~ /run\-workers$/ ) {
                 if ( $cmd !~ /^sh\s/ ) {
                     $rpt_count += 1;
                 }
@@ -85,14 +85,14 @@ sub main {
         my $limit = MT->config( 'RPTFreeMemoryLimit' );
         if ( $limit and ! MT::TheSchwartz::_has_enough_swap( $limit ) ) {
             die
-                "Free memory below RPT limit; cancelling rebuild_queue launch\n";
+                "Free memory below RPT limit; cancelling run-workers launch\n";
         }
     }
     if ( MT->config( 'RPTFreeSwapLimit' ) ) {
         my $swaplimit = MT->config( 'RPTSwapMemoryLimit' );
         if ( $swaplimit and ! MT::TheSchwartz::_has_enough_swap( $swaplimit ) ) {
             die
-                "Free swap memory below RPT limit; cancelling rebuild_queue launch\n";
+                "Free swap memory below RPT limit; cancelling run-workers launch\n";
         }
     }
     $mt->{ vtbl }                 = {};
